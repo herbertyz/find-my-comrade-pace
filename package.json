@@ -1,0 +1,26 @@
+{
+  "name": "find-my-comrade-pace",
+  "version": "0.1.0",
+  "description": "Personalised pacing strategy and printable pace band for the Comrades Marathon (2026 Up Run).",
+  "private": true,
+  "main": "dist/server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsc --watch & nodemon dist/server.js",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "fast-xml-parser": "^4.4.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "nodemon": "^3.1.4",
+    "typescript": "^5.5.4"
+  }
+}
