@@ -7,3 +7,4 @@ dist/
 *.tsbuildinfo
 .vscode/
 .idea/
+*.tmp

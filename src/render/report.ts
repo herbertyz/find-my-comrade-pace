@@ -12,14 +12,17 @@ import {
 import { defaultFormValues, inputsToFormValues, renderForm } from "./form";
 import { renderPaceBand } from "./paceBand";
 import { SHARED_CSS } from "./styles";
+import { THEME_INIT_SCRIPT, THEME_RUNTIME_SCRIPT, THEME_TOGGLE_HTML } from "./theme";
 
 function ratingPill(r: number): string {
+  // Same hue family as the pace-band cells: red for inclines, green for
+  // declines, with +1 / -1 being lighter shades of +2 / -2.
   const colors: Record<number, string> = {
-    [-2]: "#5dadff",
-    [-1]: "#92c4ff",
-    [0]: "#8a93a6",
-    [1]: "#ffb476",
-    [2]: "#ff8a5d",
+    [-2]: "#39ff14",   // big decline
+    [-1]: "#a0ffa0",   // small decline (lighter green)
+    [0]: "#8a93a6",    // flat
+    [1]: "#ff8080",    // small incline (lighter red)
+    [2]: "#ff0000",    // big incline
   };
   const labels: Record<number, string> = {
     [-2]: "−2",
@@ -121,6 +124,7 @@ export function renderReport(result: PacingResult): string {
 <meta charset="utf-8">
 <title>Find My Comrades Pace — ${fmtTime(result.gunTimeSec)} plan</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+${THEME_INIT_SCRIPT}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>${SHARED_CSS}
   .checkpoints { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
@@ -133,6 +137,7 @@ export function renderReport(result: PacingResult): string {
 </style>
 </head>
 <body>
+${THEME_TOGGLE_HTML}
 <div class="wrap">
   <header>
     <h1>Find My Comrades Pace — ${fmtTime(result.gunTimeSec)} plan</h1>
@@ -148,7 +153,9 @@ export function renderReport(result: PacingResult): string {
     <div class="stat"><div class="k">Gun-time goal</div><div class="v">${fmtTime(result.gunTimeSec)}</div><div class="vsub">official Comrades clock</div></div>
     <div class="stat"><div class="k">Start delay</div><div class="v">${fmtMmss(result.inputs.startDelaySeconds)}</div><div class="vsub">cross start line</div></div>
     <div class="stat"><div class="k">Running time</div><div class="v">${fmtTime(result.runningTimeSec)}</div><div class="vsub">your watch at finish</div></div>
-    <div class="stat"><div class="k">Avg running pace</div><div class="v">${fmtPace(avgPace)}<span style="font-size:14px;color:var(--text-dim)"> /km</span></div><div class="vsub">${fmtPace(avgGap)}/km avg GAP</div></div>
+    <div class="stat"><div class="k">Distance</div><div class="v">${result.totalKm.toFixed(2)} km</div><div class="vsub">${(result.totalKm / 1.609344).toFixed(2)} mi</div></div>
+    <div class="stat"><div class="k">Avg running pace</div><div class="v">${fmtPace(avgPace)}<span style="font-size:14px;color:var(--text-dim)"> /km</span></div><div class="vsub">over ${fmtTime(result.runningTimeSec)} of running</div></div>
+    <div class="stat"><div class="k">Baseline GAP</div><div class="v">${baselineStr}<span style="font-size:14px;color:var(--text-dim)"> /km</span></div><div class="vsub">flat-equiv effort</div></div>
     <div class="stat"><div class="k">Net elevation</div><div class="v" style="color:var(--warn)">${(totals.netClimb >= 0 ? "+" : "") + totals.netClimb.toFixed(0)} m</div><div class="vsub">+${totals.ascent.toFixed(0)} / −${totals.descent.toFixed(0)} m</div></div>
     <div class="stat"><div class="k">Big climbs / descents</div><div class="v">${totals.bigClimbs} / ${totals.bigDescents}</div><div class="vsub">+2 / −2 ratings</div></div>
   </section>
@@ -159,14 +166,51 @@ export function renderReport(result: PacingResult): string {
 
   <h2>Course profile (up direction)</h2>
   <div class="panel">
-    <div class="panel-header"><h3>Elevation</h3><div class="meta">Durban (sea level) → PMB (~632 m)</div></div>
+    <div class="panel-header"><h3>Elevation</h3><div class="meta">Durban (sea level) → PMB (~632 m) · cells coloured by grade rating</div></div>
     <div class="chart-box tall"><canvas id="elevChart"></canvas></div>
+    <div class="legend">
+      <span><span class="swatch" style="background:#ff0000"></span>+2 big incline</span>
+      <span><span class="swatch" style="background:#ff8080"></span>+1 small incline</span>
+      <span><span class="swatch" style="background:#a0ffa0"></span>−1 small decline</span>
+      <span><span class="swatch" style="background:#39ff14"></span>−2 big decline</span>
+    </div>
   </div>
 
   <h2>Pace strategy</h2>
   <div class="panel">
-    <div class="panel-header"><h3>GAP target vs actual pace per km segment</h3><div class="meta">lower = faster</div></div>
+    <div class="panel-header"><h3>GAP target vs actual pace per km segment</h3><div class="meta">lower = faster · cells coloured by grade rating</div></div>
     <div class="chart-box tall"><canvas id="paceChart"></canvas></div>
+    <div class="legend">
+      <span><span class="swatch" style="background:#6ea8fe"></span>Pace</span>
+      <span><span class="swatch" style="background:#c084fc"></span>GAP</span>
+      <span style="margin-left:8px;color:var(--text-dim);">·</span>
+      <span><span class="swatch" style="background:#ff0000"></span>+2</span>
+      <span><span class="swatch" style="background:#ff8080"></span>+1</span>
+      <span><span class="swatch" style="background:#a0ffa0"></span>−1</span>
+      <span><span class="swatch" style="background:#39ff14"></span>−2</span>
+    </div>
+  </div>
+
+  <h2>Pacing rules applied</h2>
+  <div class="grid-2">
+    <div class="notes">
+      <strong>Effort allocation</strong>
+      <ul>
+        <li><strong>Conservative start:</strong> first 3 km at GAP <code>${baselineStr} + 10s</code>, then linear ramp to baseline by km 6 (built-in default).</li>
+        <li><strong>Big inclines (rating +2):</strong> hold baseline GAP + <code>${result.inputs.inclineGapAdjSec}s</code> — pace will naturally slow per the grade.</li>
+        <li><strong>Big descents (rating −2, &gt;3% downhill):</strong> GAP + <code>${result.inputs.declineGapAdjSec}s</code> — protect the quads; don't bomb the descents.</li>
+        <li><strong>Heat fade:</strong> GAP gradually drifts +0 → +<code>${result.inputs.midFadeSec}s</code>/km from km 30 → 60, then +<code>${result.inputs.midFadeSec}s</code> → +<code>${result.inputs.lastFadeSec}s</code>/km from km 60 → finish.</li>
+      </ul>
+    </div>
+    <div class="notes">
+      <strong>Grade-to-pace conversion</strong>
+      <ul>
+        <li>Quadratic: <code>pace = GAP × (1 + 0.026·g + 0.002·g²)</code> where <code>g</code> is grade in %.</li>
+        <li>+5% grade → pace ≈ GAP × 1.18 (≈18% slower)</li>
+        <li>−5% grade → pace ≈ GAP × 0.92 (≈8% faster)</li>
+        <li><strong>Rating thresholds</strong> (per 1 km segment): +2 &gt; 3%, +1 &gt; 1%, ±0 within ±1%, −1 &lt; −1%, −2 &lt; −3%.</li>
+      </ul>
+    </div>
   </div>
 
   <h2>Full pacing table — ${result.rows.length} segments</h2>
@@ -187,6 +231,19 @@ export function renderReport(result: PacingResult): string {
     </div>
   </div>
 
+  <h2>How to use this plan</h2>
+  <div class="notes">
+    <ul>
+      <li><strong>The marker column</strong> shows the segment. <code>Start→85</code> is the partial first 0.777 km. <code>85→84</code> is the 1 km between markers 85 and 84. <code>1→0</code> is the final km to the finish.</li>
+      <li><strong>The Cum km column</strong> is the cumulative distance at the <em>end</em> of that segment (i.e. where the marker is on the road).</li>
+      <li><strong>Cum (watch)</strong> is the time your watch should show as you pass the marker — it starts ticking when you cross the start line. <strong>Gun time</strong> = watch time + your <code>${fmtMmss(result.inputs.startDelaySeconds)}</code> start delay. This is the official Comrades clock reading, what's used for cutoffs.</li>
+      <li><strong>The Pace column is your running pace</strong> for that segment — what to target on the watch screen. The GAP column shows the underlying effort (flat-equivalent pace) — useful if you want to think in terms of effort rather than pace.</li>
+      <li><strong>The Rating column</strong> tells you what to expect for that segment: +2/−2 are the dramatic sections, ±0 is flat. On +1 and +2 hold form and don't push the pace; on −2 deliberately ease back (the GAP buffer is already built in).</li>
+      <li><strong>This is the up run</strong> — net climbing, with the famous big climbs (Cowies / Fields / Botha's / Inchanga / Polly Shortts). The plan front-loads the climbing into the first ~70 km and gives you a slight downhill into PMB. Don't chase the early sea-level pace; let the hills come to you.</li>
+      <li><strong>The pace band below</strong> can be screen-shotted for printing, or download it as a JPG with the button at the bottom.</li>
+    </ul>
+  </div>
+
   <h2>Printable pace band (40 × 190 mm)</h2>
   ${renderPaceBand(result)}
 </div>
@@ -201,37 +258,68 @@ function fmtPace(secs) {
   return m + ':' + String(r).padStart(2, '0');
 }
 
-Chart.defaults.color = '#8a93a6';
+// Read theme-driven colors from CSS variables so charts re-skin when the
+// user toggles light/dark.
+function themeColors() {
+  const cs = getComputedStyle(document.documentElement);
+  return {
+    text: cs.getPropertyValue('--text-dim').trim() || '#8a93a6',
+    grid: cs.getPropertyValue('--grid').trim() || 'rgba(255,255,255,0.06)',
+    overlays: {
+      '2':  cs.getPropertyValue('--r2-overlay').trim()  || 'rgba(255,0,0,0.18)',
+      '1':  cs.getPropertyValue('--r1-overlay').trim()  || 'rgba(255,255,0,0.13)',
+      '0':  'rgba(0,0,0,0)',
+      '-1': cs.getPropertyValue('--rn1-overlay').trim() || 'rgba(0,255,255,0.13)',
+      '-2': cs.getPropertyValue('--rn2-overlay').trim() || 'rgba(57,255,20,0.18)'
+    }
+  };
+}
+
+let __theme = themeColors();
+Chart.defaults.color = __theme.text;
 Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
 Chart.defaults.font.size = 11;
-const gridColor = 'rgba(255,255,255,0.06)';
 
-const labels = DATA.rows.map(r => r.marker);
-const elev = DATA.rows.map(r => r.ele);
-const xKm = DATA.rows.map(r => r.d_end_km);
-const paces = DATA.rows.map(r => r.pace);
-const gaps = DATA.rows.map(r => r.gap);
+// Per-segment rating-coloured background; reads CSS variables on every draw
+// so a theme toggle is reflected on the next chart.update().
+const ratingBandsPlugin = {
+  id: 'ratingBands',
+  beforeDatasetsDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+    if (!scales.x || !chartArea) return;
+    const overlays = __theme.overlays;
+    DATA.rows.forEach(r => {
+      const x0 = scales.x.getPixelForValue(r.d_start_km);
+      const x1 = scales.x.getPixelForValue(r.d_end_km);
+      ctx.fillStyle = overlays[String(r.rating)];
+      ctx.fillRect(x0, chartArea.top, x1 - x0, chartArea.bottom - chartArea.top);
+    });
+  }
+};
+Chart.register(ratingBandsPlugin);
 
-new Chart(document.getElementById('elevChart'), {
+const elev = DATA.rows.map(r => ({ x: r.d_end_km, y: r.ele }));
+const paces = DATA.rows.map(r => ({ x: r.d_end_km, y: r.pace }));
+const gaps = DATA.rows.map(r => ({ x: r.d_end_km, y: r.gap }));
+
+const elevChart = new Chart(document.getElementById('elevChart'), {
   type: 'line',
   data: {
-    labels: xKm,
     datasets: [{ label: 'Elevation', data: elev, borderColor: '#7dd3a0', backgroundColor: 'rgba(125,211,160,0.18)', borderWidth: 1.5, pointRadius: 0, fill: 'origin', tension: 0.2 }]
   },
   options: {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { title: c => 'km ' + (+c[0].label).toFixed(2), label: c => c.parsed.y.toFixed(0) + ' m' } } },
+    plugins: { legend: { display: false }, tooltip: { callbacks: { title: c => 'km ' + Number(c[0].parsed.x).toFixed(2), label: c => c.parsed.y.toFixed(0) + ' m' } } },
     scales: {
-      x: { type: 'linear', grid: { color: gridColor }, title: { display: true, text: 'Distance (km from start)' }, min: 0, max: 86 },
-      y: { grid: { color: gridColor }, title: { display: true, text: 'Elevation (m)' } }
+      x: { type: 'linear', grid: { color: __theme.grid }, title: { display: true, text: 'Distance (km from start)' }, min: 0, max: 86 },
+      y: { grid: { color: __theme.grid }, title: { display: true, text: 'Elevation (m)' } }
     }
   }
 });
 
-new Chart(document.getElementById('paceChart'), {
+const paceChart = new Chart(document.getElementById('paceChart'), {
   type: 'line',
   data: {
-    labels: xKm,
     datasets: [
       { label: 'Pace', data: paces, borderColor: '#6ea8fe', borderWidth: 2, pointRadius: 0, tension: 0.2 },
       { label: 'GAP', data: gaps, borderColor: '#c084fc', borderWidth: 1.5, borderDash: [4, 4], pointRadius: 0, tension: 0.2 }
@@ -239,14 +327,31 @@ new Chart(document.getElementById('paceChart'), {
   },
   options: {
     responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-    plugins: { legend: { display: true, labels: { color: '#8a93a6' } }, tooltip: { callbacks: { title: c => 'km ' + (+c[0].label).toFixed(2), label: c => c.dataset.label + ': ' + fmtPace(c.parsed.y) + '/km' } } },
+    plugins: { legend: { display: false }, tooltip: { callbacks: { title: c => 'km ' + Number(c[0].parsed.x).toFixed(2), label: c => c.dataset.label + ': ' + fmtPace(c.parsed.y) + '/km' } } },
     scales: {
-      x: { type: 'linear', grid: { color: gridColor }, title: { display: true, text: 'Distance (km from start)' }, min: 0, max: 86 },
-      y: { grid: { color: gridColor }, reverse: true, ticks: { callback: v => fmtPace(v) }, title: { display: true, text: 'Pace (min:sec / km)' } }
+      x: { type: 'linear', grid: { color: __theme.grid }, title: { display: true, text: 'Distance (km from start)' }, min: 0, max: 86 },
+      y: { grid: { color: __theme.grid }, reverse: true, ticks: { callback: v => fmtPace(v) }, title: { display: true, text: 'Pace (min:sec / km)' } }
     }
   }
 });
+
+// Re-skin charts when the theme toggles.
+window.__paceCharts = [elevChart, paceChart];
+window.addEventListener('themechange', function() {
+  __theme = themeColors();
+  Chart.defaults.color = __theme.text;
+  window.__paceCharts.forEach(function(ch) {
+    if (!ch || !ch.options || !ch.options.scales) return;
+    Object.keys(ch.options.scales).forEach(function(key) {
+      if (ch.options.scales[key] && ch.options.scales[key].grid) {
+        ch.options.scales[key].grid.color = __theme.grid;
+      }
+    });
+    ch.update();
+  });
+});
 </script>
+${THEME_RUNTIME_SCRIPT}
 </body>
 </html>`;
 }
@@ -259,9 +364,11 @@ export function renderLandingPage(): string {
 <meta charset="utf-8">
 <title>Find My Comrades Pace — pacing strategy &amp; printable pace band</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+${THEME_INIT_SCRIPT}
 <style>${SHARED_CSS}</style>
 </head>
 <body>
+${THEME_TOGGLE_HTML}
 <div class="wrap">
   <header>
     <h1>Find My Comrades Pace</h1>
@@ -281,6 +388,7 @@ export function renderLandingPage(): string {
     <strong>No data is stored.</strong> Your inputs are turned into a URL and the report is generated server-side on every request. Bookmark the result URL to come back to your plan.
   </div>
 </div>
+${THEME_RUNTIME_SCRIPT}
 </body>
 </html>`;
 }
