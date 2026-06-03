@@ -153,6 +153,7 @@ export function renderPaceBand(result: PacingResult): string {
   //   km @ 82, pace @ 242, elapsed @ 468
   const COL_KM_X = 82;
   const COL_PACE_X = 242;
+  const COL_PACE_CENTER_X = 162;   // center of pace column (82..242)
   const COL_ELAPSED_X = 468;
 
   function strokedText(ctx, txt, x, y) {
@@ -172,7 +173,11 @@ export function renderPaceBand(result: PacingResult): string {
 
     // Header lines (centered)
     ctx.fillStyle = "#000000";
-    ctx.font = 'bold 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
+    // Measure pace-column shift (3/4 width of '5') at data-row font size
+    ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
+    const paceShift = ctx.measureText("5").width;
+
+    ctx.font = 'bold 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     let y = 0;
@@ -185,11 +190,13 @@ export function renderPaceBand(result: PacingResult): string {
     ctx.fillRect(0, y - 1, W, 2);
 
     // Heading row
-    ctx.font = 'bold 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
-    ctx.textAlign = "right";
+    ctx.font = 'bold 46px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
     ctx.fillStyle = "#000000";
+    ctx.textAlign = "right";
     ctx.fillText("km", COL_KM_X, y + HEADING_H / 2);
-    ctx.fillText("pace", COL_PACE_X, y + HEADING_H / 2);
+    ctx.textAlign = "center";
+    ctx.fillText("pace", COL_PACE_CENTER_X + paceShift, y + HEADING_H / 2);
+    ctx.textAlign = "right";
     ctx.fillText("elapsed", COL_ELAPSED_X, y + HEADING_H / 2);
     y += HEADING_H;
     ctx.fillRect(0, y - 1, W, 2);
@@ -199,7 +206,7 @@ export function renderPaceBand(result: PacingResult): string {
     // stays readable on bright cells (especially red +2). lineWidth is
     // centered on the path, so 8 px stroke = ~4 px outline beyond the
     // character — visible on print at 305 DPI.
-    ctx.font = 'bold 40px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
+    ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
     ctx.lineWidth = 8;
     ctx.strokeStyle = "#ffffff";
     ctx.lineJoin = "round";
@@ -221,11 +228,14 @@ export function renderPaceBand(result: PacingResult): string {
         }
       }
 
-      // Text overlay (bold black with thin white stroke)
+      // Text overlay: km and elapsed right-aligned; pace centered in its column
       ctx.fillStyle = "#000000";
       const cy = rowY + DATA_H / 2;
+      ctx.textAlign = "right";
       strokedText(ctx, String(g.marker), COL_KM_X, cy);
-      strokedText(ctx, g.paceStr, COL_PACE_X, cy);
+      ctx.textAlign = "center";
+      strokedText(ctx, g.paceStr, COL_PACE_CENTER_X + paceShift, cy);
+      ctx.textAlign = "right";
       strokedText(ctx, g.elapsedStr, COL_ELAPSED_X, cy);
     }
 
@@ -251,10 +261,11 @@ export function renderPaceBand(result: PacingResult): string {
   const btn = document.getElementById("downloadJpgBtn");
   const status = document.getElementById("downloadStatus");
   if (!btn) return;
-  btn.addEventListener("click", function () {
+  btn.addEventListener("click", async function () {
     btn.disabled = true;
     status.textContent = "Rendering…";
     try {
+      await document.fonts.ready;
       const canvas = renderPaceBandToCanvas();
       const url = canvas.toDataURL("image/jpeg", 0.95);
       const a = document.createElement("a");

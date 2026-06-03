@@ -163,9 +163,10 @@ export const SHARED_CSS = `
     position: relative;
   }
   .pace-band .header-line { display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 9.5pt; padding: 0 2mm; }
-  .pace-band .heading-line { display: grid; grid-template-columns: 82fr 160fr 226fr 12fr; align-items: center; font-weight: 700; font-size: 8pt; border-top: 0.5pt solid black; border-bottom: 0.5pt solid black; }
+  .pace-band .heading-line { display: grid; grid-template-columns: 82fr 160fr 226fr 12fr; align-items: center; font-weight: 700; font-size: 9.5pt; border-top: 0.5pt solid black; border-bottom: 0.5pt solid black; }
   .pace-band .heading-line .col { text-align: right; padding-right: 2px; }
   .pace-band .heading-line .col.km { padding-right: 0; }
+  .pace-band .heading-line .col.pace { text-align: center; padding-right: 0; transform: translateX(1ch); }
   .pace-band .heading-line .col.elapsed { padding-right: 6px; }
   .pace-band .data-row {
     position: relative;
@@ -201,6 +202,7 @@ export const SHARED_CSS = `
     -webkit-text-stroke: 1.5pt #fff;
   }
   .pace-band .data-row .text-overlay .col { text-align: right; padding-right: 2px; }
+  .pace-band .data-row .text-overlay .col.pace { text-align: center; padding-right: 0; transform: translateX(1ch); }
   .pace-band .data-row .text-overlay .col.elapsed { padding-right: 6px; }
   /* (No cell-boundary ticks — colors alone separate the cells.) */
 

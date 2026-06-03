@@ -125,6 +125,8 @@ export function renderReport(result: PacingResult): string {
 <title>Find My Comrades Pace — ${fmtTime(result.gunTimeSec)} plan</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 ${THEME_INIT_SCRIPT}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>${SHARED_CSS}
   .checkpoints { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
